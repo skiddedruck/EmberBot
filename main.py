@@ -7,13 +7,7 @@ import json
 from dotenv import load_dotenv
 import base64
 from itertools import cycle
-import imagehash
-from PIL import Image
-import aiohttp
-import io
-import pytesseract
-import re
-from PIL import Image, ImageEnhance, ImageFilter
+
 
 bot = commands.Bot(command_prefix=".", intents=discord.Intents.all())
 bot_statuses = cycle(["giving scripts", "Hello from skidded", "Skidding Code rn", "Sub to @RuckConfigs"])
@@ -228,104 +222,6 @@ async def sendwhitelistreq_error(interaction: discord.Interaction, error: comman
         await interaction.response.send_message("You do not have the required role to use this command.", ephemeral=True)
     else:
         await interaction.response.send_message("An error occurred while processing the command.", ephemeral=True)
-
-
-ALLOWED_CHANNEL_ID = 1265387815563427950
-SUBSCRIBER_ROLE_NAME = "「Ember™」Subbed 2"
-image_hashes = set()
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-async def preprocess_image(image):
-    # Convert image to grayscale
-    image = image.convert('L')
-    # Enhance contrast
-    enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(2)
-    # Apply thresholding to binarize the image
-    image = image.point(lambda p: p > 128 and 255)
-    return image
-
-async def get_image_text(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                image_data = await response.read()
-                image = Image.open(io.BytesIO(image_data))
-                # Preprocess image
-                image = await preprocess_image(image)
-                text = pytesseract.image_to_string(image)
-                return text
-    return ""
-
-async def is_subscribed_image(text, channel_name):
-    # Look for specific phrases indicating subscription
-    subscription_phrases = ["subscribed", "subscription", "subscribed to"]
-    
-    # Normalize text and search for phrases
-    normalized_text = text.lower().strip()
-    print(f"Normalized text: {normalized_text}")  # Debug: Print normalized text
-    
-    # Check if any subscription phrase is in the normalized text
-    if any(phrase in normalized_text for phrase in subscription_phrases):
-        return True
-    
-    # Check if the specific channel name is in the text
-    print(f"Channel name: {channel_name}")  # Debug: Print the channel name
-    if channel_name.lower() in normalized_text:
-        return True
-
-    return False
-
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
-
-    if message.channel.id != ALLOWED_CHANNEL_ID:
-        return
-
-    if message.attachments:
-        for attachment in message.attachments:
-            if attachment.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-                image_hash = await get_image_hash(attachment.url)
-                if image_hash in image_hashes:
-                    await message.channel.send(f'{message.author.mention}, this image has already been sent.')
-                else:
-                    text = await get_image_text(attachment.url)
-                    channel_name = message.channel.name
-                    if await is_subscribed_image(text, channel_name):
-                        image_hashes.add(image_hash)
-                        guild = message.guild
-                        role = discord.utils.get(guild.roles, name=SUBSCRIBER_ROLE_NAME)
-                        if role:
-                            member = message.author
-                            if role not in member.roles:
-                                await member.add_roles(role)
-                                await message.channel.send(f'{member.mention}, you have been given the {role.name} role!')
-                            else:
-                                await message.channel.send(f'{member.mention}, you already have the {role.name} role!')
-                        else:
-                            await message.channel.send(f'The role {SUBSCRIBER_ROLE_NAME} does not exist.')
-                    else:
-                        await message.channel.send(f'{message.author.mention}, this image does not indicate a subscription.')
-                break
-
-    await bot.process_commands(message)
-
-async def get_image_hash(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                image_data = await response.read()
-                image = Image.open(io.BytesIO(image_data))
-                return imagehash.average_hash(image)
-    return None
-
-
-
-
-
-
 
 
 

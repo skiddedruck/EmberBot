@@ -3,5 +3,3 @@ aiosqlite
 discord.py
 python-dotenv
 requests
-pytesseract
-imagehash
